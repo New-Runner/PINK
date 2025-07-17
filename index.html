@@ -41,23 +41,7 @@
   <div class="result" id="cf"></div>
   <button class="close-btn" onclick="Telegram.WebApp.close()">Закрыть</button>
 
-<!--   
   <script>
-    async function checkPing(url, timeout = 3000) {
-      const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), timeout);
-      try {
-        const start = performance.now();
-        await fetch(url, { method: 'HEAD', signal: controller.signal });
-        const time = Math.round(performance.now() - start);
-        return { ok: true, time };
-      } catch (e) {
-        return { ok: false };
-      } finally {
-        clearTimeout(id);
-      }
-    }
-
     async function sendData() {
       const status = document.getElementById("status");
       const ipinfo = document.getElementById("ipinfo");
@@ -81,17 +65,31 @@
           <strong>Провайдер:</strong> ${ipData.org}
         `;
 
-        const freedom = await checkPing("https://bankffin.kz/ru");
-        ping.innerHTML = freedom.ok
-          ? `✅ Связь с <code>bankffin.kz</code> установлена за ${freedom.time} мс`
-          : `❌ Не удалось связаться с <code>bankffin.kz</code>`;
-        ping.className = freedom.ok ? "result ok" : "result fail";
+        // Пинг bankffin.kz с обходом CORS
+        const startBank = performance.now();
+        fetch("https://bankffin.kz", { mode: "no-cors" })
+          .then(() => {
+            const time = Math.round(performance.now() - startBank);
+            ping.innerHTML = `✅ Связь с <code>bankffin.kz</code> установлена за ${time} мс`;
+            ping.className = "result ok";
+          })
+          .catch(() => {
+            ping.innerHTML = "❌ Не удалось связаться с <code>bankffin.kz</code>";
+            ping.className = "result fail";
+          });
 
-        const cloudflare = await checkPing("https://www.cloudflare.com/cdn-cgi/trace");
-        cf.innerHTML = cloudflare.ok
-          ? "✅ Cloudflare доступен"
-          : "❌ Cloudflare заблокирован или недоступен";
-        cf.className = cloudflare.ok ? "result ok" : "result fail";
+        // Cloudflare проверка (через ping к их trace)
+        const startCF = performance.now();
+        fetch("https://www.cloudflare.com/cdn-cgi/trace", { mode: "no-cors" })
+          .then(() => {
+            const time = Math.round(performance.now() - startCF);
+            cf.innerHTML = `✅ Cloudflare доступен (${time} мс)`;
+            cf.className = "result ok";
+          })
+          .catch(() => {
+            cf.innerHTML = "❌ Cloudflare заблокирован или недоступен";
+            cf.className = "result fail";
+          });
 
         const payload = {
           ip: ipData.ip,
@@ -114,41 +112,6 @@
     window.addEventListener('DOMContentLoaded', () => {
       setTimeout(sendData, 500);
     });
-  </script> -->
-  <script>
-    async function sendData() {
-      const status = document.getElementById("status");
-  
-      if (!Telegram.WebApp || !Telegram.WebApp.initData || Telegram.WebApp.initData.length === 0) {
-        status.innerText = "❌ Открой страницу через Telegram";
-        return;
-      }
-  
-      try {
-        const ipData = await fetch("https://ipapi.co/json/").then(r => r.json());
-        const userAgent = navigator.userAgent;
-  
-        const payload = {
-          ip: ipData.ip,
-          city: ipData.city,
-          region: ipData.region,
-          country: ipData.country_name,
-          org: ipData.org,
-          ua: userAgent
-        };
-  
-        Telegram.WebApp.ready();  // ⬅️ ВАЖНО!
-        Telegram.WebApp.sendData(JSON.stringify(payload));
-        status.innerText = "✅ Данные отправлены";
-      } catch (e) {
-        status.innerText = "❌ Ошибка: " + e.message;
-      }
-    }
-  
-    window.addEventListener('DOMContentLoaded', () => {
-      setTimeout(sendData, 500);
-    });
   </script>
-  
 </body>
 </html>
