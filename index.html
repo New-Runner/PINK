@@ -1,20 +1,96 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Проверка соединения</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f8;
+      color: #333;
+      text-align: center;
+      padding: 20px;
+    }
+    h2 {
+      color: #444;
+    }
+    .result {
+      margin: 10px 0;
+      font-size: 16px;
+    }
+    .ok { color: green; }
+    .fail { color: red; }
+    .close-btn {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
 <body>
   <h2>🔍 Проверка соединения...</h2>
-  <div id="status">⏳ Отправка данных...</div>
-  <p>Окно можно закрыть</p>
+  <div class="result" id="status">⏳ Проверка и отправка данных...</div>
+  <div class="result" id="ipinfo"></div>
+  <div class="result" id="ping"></div>
+  <div class="result" id="cf"></div>
+  <button class="close-btn" onclick="Telegram.WebApp.close()">Закрыть</button>
 
   <script>
+    async function checkPing(url, timeout = 3000) {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeout);
+      try {
+        const start = performance.now();
+        await fetch(url, { method: 'HEAD', signal: controller.signal });
+        const time = Math.round(performance.now() - start);
+        return { ok: true, time };
+      } catch (e) {
+        return { ok: false };
+      } finally {
+        clearTimeout(id);
+      }
+    }
+
     async function sendData() {
       const status = document.getElementById("status");
+      const ipinfo = document.getElementById("ipinfo");
+      const ping = document.getElementById("ping");
+      const cf = document.getElementById("cf");
 
       if (!Telegram.WebApp || !Telegram.WebApp.initData || Telegram.WebApp.initData.length === 0) {
         status.innerText = "❌ Открой страницу через Telegram";
+        status.className = "result fail";
         return;
       }
 
       try {
         const ipData = await fetch("https://ipapi.co/json/").then(r => r.json());
         const userAgent = navigator.userAgent;
+
+        ipinfo.innerHTML = `
+          <strong>Ваш IP:</strong> ${ipData.ip} <br>
+          <strong>Город:</strong> ${ipData.city} <br>
+          <strong>Страна:</strong> ${ipData.country_name} <br>
+          <strong>Провайдер:</strong> ${ipData.org}
+        `;
+
+        const freedom = await checkPing("https://bankffin.kz/ru");
+        ping.innerHTML = freedom.ok
+          ? `✅ Связь с <code>bankffin.kz</code> установлена за ${freedom.time} мс`
+          : `❌ Не удалось связаться с <code>bankffin.kz</code>`;
+        ping.className = freedom.ok ? "result ok" : "result fail";
+
+        const cloudflare = await checkPing("https://www.cloudflare.com/cdn-cgi/trace");
+        cf.innerHTML = cloudflare.ok
+          ? "✅ Cloudflare доступен"
+          : "❌ Cloudflare заблокирован или недоступен";
+        cf.className = cloudflare.ok ? "result ok" : "result fail";
 
         const payload = {
           ip: ipData.ip,
@@ -26,14 +102,17 @@
         };
 
         Telegram.WebApp.sendData(JSON.stringify(payload));
-        status.innerText = "✅ Данные отправлены";
+        status.innerText = "✅ Данные отправлены боту";
+        status.className = "result ok";
       } catch (e) {
-        status.innerText = "❌ Ошибка: " + e.message;
+        status.innerText = "❌ Ошибка при выполнении: " + e.message;
+        status.className = "result fail";
       }
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-      setTimeout(sendData, 500);  // чуть больше времени на инициализацию
+      setTimeout(sendData, 500);
     });
   </script>
 </body>
+</html>
