@@ -20,7 +20,13 @@
       font-size: 16px;
     }
     .ok { color: green; }
+    .warn { color: orange; }
     .fail { color: red; }
+    .done {
+      margin-top: 20px;
+      font-weight: bold;
+      color: #2c3e50;
+    }
     .close-btn {
       margin-top: 20px;
       padding: 10px 20px;
@@ -35,10 +41,12 @@
 </head>
 <body>
   <h2>🔍 Проверка соединения...</h2>
-  <div class="result" id="status">⏳ Проверка и отправка данных...</div>
+  <div class="result" id="status">⏳ Проверка...</div>
   <div class="result" id="ipinfo"></div>
   <div class="result" id="ping"></div>
   <div class="result" id="cf"></div>
+  <div class="result" id="egov"></div>
+  <div class="done" id="doneMsg" style="display:none;">✅ Проверка завершена, можете закрыть окно</div>
   <button class="close-btn" onclick="Telegram.WebApp.close()">Закрыть</button>
 
   <script>
@@ -47,9 +55,11 @@
       const ipinfo = document.getElementById("ipinfo");
       const ping = document.getElementById("ping");
       const cf = document.getElementById("cf");
+      const egov = document.getElementById("egov");
+      const doneMsg = document.getElementById("doneMsg");
 
       if (!Telegram.WebApp || !Telegram.WebApp.initData || Telegram.WebApp.initData.length === 0) {
-        status.innerText = "❌ Открой страницу через Telegram";
+        status.innerText = "❌ Откройте страницу через Telegram";
         status.className = "result fail";
         return;
       }
@@ -65,31 +75,47 @@
           <strong>Провайдер:</strong> ${ipData.org}
         `;
 
-        // Пинг bankffin.kz с обходом CORS
+        // Пинг к bankffin.kz
         const startBank = performance.now();
         fetch("https://bankffin.kz", { mode: "no-cors" })
           .then(() => {
             const time = Math.round(performance.now() - startBank);
-            ping.innerHTML = `✅ Связь с <code>bankffin.kz</code> установлена за ${time} мс`;
-            ping.className = "result ok";
+            ping.innerHTML = `✅ Соединение с банком Фридом Банк Казахстан: ${time} мс (${ratePing(time)})`;
+            ping.className = "result " + rateClass(time);
           })
           .catch(() => {
-            ping.innerHTML = "❌ Не удалось связаться с <code>bankffin.kz</code>";
+            ping.innerHTML = "❌ Не удалось соединиться с банком Фридом Банк Казахстан";
             ping.className = "result fail";
-          });
+          })
+          .finally(() => checkAllDone());
 
-        // Cloudflare проверка (через ping к их trace)
+        // Cloudflare
         const startCF = performance.now();
         fetch("https://www.cloudflare.com/cdn-cgi/trace", { mode: "no-cors" })
           .then(() => {
             const time = Math.round(performance.now() - startCF);
-            cf.innerHTML = `✅ Cloudflare доступен (${time} мс)`;
-            cf.className = "result ok";
+            cf.innerHTML = `✅ Сервис Cloudflare доступен: ${time} мс (${ratePing(time)})`;
+            cf.className = "result " + rateClass(time);
           })
           .catch(() => {
-            cf.innerHTML = "❌ Cloudflare заблокирован или недоступен";
+            cf.innerHTML = "❌ Сервис Cloudflare заблокирован или недоступен";
             cf.className = "result fail";
-          });
+          })
+          .finally(() => checkAllDone());
+
+        // egov.kz — проверка гос. портала РК
+        const startEgov = performance.now();
+        fetch("https://egov.kz", { mode: "no-cors" })
+          .then(() => {
+            const time = Math.round(performance.now() - startEgov);
+            egov.innerHTML = `✅ Связь с порталом egov.kz: ${time} мс (${ratePing(time)})`;
+            egov.className = "result " + rateClass(time);
+          })
+          .catch(() => {
+            egov.innerHTML = "❌ Не удалось связаться с порталом egov.kz";
+            egov.className = "result fail";
+          })
+          .finally(() => checkAllDone());
 
         const payload = {
           ip: ipData.ip,
@@ -101,11 +127,31 @@
         };
 
         Telegram.WebApp.sendData(JSON.stringify(payload));
-        status.innerText = "✅ Данные отправлены боту";
+        status.innerText = "✅ Данные загружены";
         status.className = "result ok";
       } catch (e) {
         status.innerText = "❌ Ошибка при выполнении: " + e.message;
         status.className = "result fail";
+      }
+    }
+
+    function ratePing(ms) {
+      if (ms <= 100) return "🟢";
+      if (ms <= 500) return "🟠";
+      return "🔴";
+    }
+
+    function rateClass(ms) {
+      if (ms <= 100) return "ok";
+      if (ms <= 300) return "warn";
+      return "fail";
+    }
+
+    let completedChecks = 0;
+    function checkAllDone() {
+      completedChecks++;
+      if (completedChecks >= 3) {
+        document.getElementById("doneMsg").style.display = "block";
       }
     }
 
