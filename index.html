@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Проверка соединения</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     :root {
       --bg-light: #f4f4f8;
@@ -13,17 +14,18 @@
       --ok: #4caf50;
       --warn: #ff9800;
       --fail: #f44336;
-      --card-bg-light: #fff;
+      --card-bg-light: #ffffff;
       --card-bg-dark: #2a2a2a;
     }
 
     body {
       font-family: "Segoe UI", sans-serif;
       text-align: center;
-      padding: 20px;
+      padding: 16px;
       background-color: var(--bg-light);
       color: var(--text-light);
       transition: all 0.3s ease;
+      font-size: 1.1em;
     }
 
     .dark {
@@ -33,16 +35,16 @@
 
     h2 {
       margin-bottom: 20px;
+      font-size: 1.4em;
     }
 
     .result {
-      margin: 12px auto;
+      margin: 10px auto;
       padding: 12px;
-      max-width: 400px;
+      max-width: 90%;
       border-radius: 10px;
-      font-size: 16px;
       background-color: var(--card-bg-light);
-      transition: background-color 0.4s, color 0.4s;
+      font-size: 1em;
     }
 
     .dark .result {
@@ -54,8 +56,8 @@
     .fail { color: var(--fail); }
 
     .status-icon {
-      font-size: 20px;
-      margin-right: 8px;
+      font-size: 18px;
+      margin-right: 6px;
       vertical-align: middle;
     }
 
@@ -67,7 +69,7 @@
 
     .close-btn {
       margin-top: 20px;
-      padding: 10px 20px;
+      padding: 10px 24px;
       font-size: 16px;
       background-color: #007bff;
       color: white;
@@ -75,7 +77,6 @@
       border-radius: 8px;
       cursor: pointer;
       display: none;
-      transition: background-color 0.3s;
     }
 
     .close-btn:hover {
@@ -93,7 +94,7 @@
   </style>
 </head>
 <body>
-  <h2>🔍 Проверка соединения...</h2>
+  <h2 id="mainTitle">⏳ Определение...</h2>
   <div class="result fade" id="status">⏳ Проверка...</div>
   <div class="result fade" id="ipinfo"></div>
   <div class="result fade" id="ping"></div>
@@ -104,24 +105,21 @@
   <button class="close-btn" id="closeBtn" onclick="Telegram.WebApp.close()">Закрыть</button>
 
   <script>
-    let pingBank = null;
-    let pingCF = null;
-    let pingEgov = null;
+    let pingBank = null, pingCF = null, pingEgov = null;
 
-    function setResult(id, message, status) {
+    function setResult(id, msg, status) {
       const el = document.getElementById(id);
-      el.innerHTML = `<span class="status-icon">${getIcon(status)}</span> ${message}`;
+      el.innerHTML = `<span class="status-icon">${getIcon(status)}</span> ${msg}`;
       el.className = `result fade ${status}`;
       setTimeout(() => el.classList.add('show'), 100);
     }
 
     function getIcon(status) {
-      switch (status) {
-        case 'ok': return '🟢';
-        case 'warn': return '🟠';
-        case 'fail': return '🔴';
-        default: return '⚪';
-      }
+      return {
+        ok: "🟢",
+        warn: "🟠",
+        fail: "🔴"
+      }[status] || "⚪";
     }
 
     function ratePing(ms) {
@@ -167,8 +165,9 @@
 
     async function sendData() {
       const status = document.getElementById("status");
+      const mainTitle = document.getElementById("mainTitle");
 
-      if (!Telegram.WebApp || !Telegram.WebApp.initData || Telegram.WebApp.initData.length === 0) {
+      if (!Telegram.WebApp?.initData?.length) {
         setResult("status", "Откройте страницу через Telegram", "fail");
         return;
       }
@@ -176,9 +175,11 @@
       try {
         const ipData = await fetch("https://ipapi.co/json/").then(r => r.json());
         const ua = navigator.userAgent;
+        const version = ipData.version || (ipData.ip.includes(":") ? "IPv6" : "IPv4");
 
+        mainTitle.innerText = "🏠 Ваше соединение:";
         setResult("ipinfo", `
-          <strong>Ваш IP:</strong> ${ipData.ip}<br>
+          <strong>${version}:</strong> ${ipData.ip}<br>
           <strong>Город:</strong> ${ipData.city}<br>
           <strong>Страна:</strong> ${ipData.country_name}<br>
           <strong>Провайдер:</strong> ${ipData.org}`, "ok");
@@ -228,7 +229,6 @@
       }
     }
 
-    // Применение тёмной темы
     window.addEventListener('DOMContentLoaded', () => {
       if (Telegram.WebApp.colorScheme === "dark") {
         document.body.classList.add("dark");
