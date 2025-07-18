@@ -95,6 +95,7 @@
 </head>
 <body>
   <h2 id="mainTitle">⏳ Определение...</h2>
+  <div class="result fade" id="status">⏳ Проверка...</div>
   <div class="result fade" id="ipinfo"></div>
   <div class="result fade" id="ping"></div>
   <div class="result fade" id="cf"></div>
@@ -102,12 +103,11 @@
   <div class="analysis" id="analysis"></div>
   <div class="done" id="doneMsg">✅ Проверка завершена</div>
   <button class="close-btn" id="closeBtn" onclick="Telegram.WebApp.close()">Закрыть</button>
-  <div class="result fade" id="status">⏳ Проверка...</div>
 
   <script>
     let pingBank = null, pingCF = null, pingEgov = null;
 
-    function setResult(id, msg, ) {
+    function setResult(id, msg, status) {
       const el = document.getElementById(id);
       el.innerHTML = `<span class="status-icon">${getIcon(status)}</span> ${msg}`;
       el.className = `result fade ${status}`;
@@ -193,6 +193,12 @@
           ua
         }));
         setResult("status", "Данные загружены", "ok");
+
+        // Скрыть статус через 1 секунду
+        setTimeout(() => {
+          status.classList.remove("show");
+          setTimeout(() => status.style.display = "none", 500);
+        }, 1000);
 
         const startBank = performance.now();
         fetch("https://bankffin.kz", { mode: "no-cors" })
