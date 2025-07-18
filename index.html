@@ -6,158 +6,200 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f8;
-      color: #333;
+      font-family: 'Segoe UI', sans-serif;
+      background: #f9fafb;
+      color: #2e2e2e;
       text-align: center;
-      padding: 20px;
+      padding: 30px;
     }
+
     h2 {
-      color: #444;
+      font-size: 24px;
+      color: #333;
+      margin-bottom: 20px;
     }
+
     .result {
-      margin: 10px 0;
+      margin: 10px auto;
+      padding: 10px 20px;
+      border-radius: 12px;
+      max-width: 90%;
       font-size: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: center;
     }
-    .ok { color: green; }
-    .warn { color: orange; }
-    .fail { color: red; }
+
+    .ok { background: #e6f7e6; color: #2e7d32; }
+    .warn { background: #fff4e5; color: #e65100; }
+    .fail { background: #fdecea; color: #c62828; }
+
+    .icon {
+      font-size: 20px;
+    }
+
+    #summary {
+      margin-top: 20px;
+      font-weight: 500;
+    }
+
     .done {
       margin-top: 20px;
       font-weight: bold;
-      color: #2c3e50;
+      color: #333;
     }
+
     .close-btn {
       margin-top: 20px;
-      padding: 10px 20px;
+      padding: 12px 24px;
       font-size: 16px;
-      background-color: #007bff;
+      background-color: #3b82f6;
       color: white;
       border: none;
-      border-radius: 8px;
+      border-radius: 10px;
       cursor: pointer;
+      display: none;
+    }
+
+    .ipinfo-box {
+      font-size: 15px;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    code {
+      background: #eee;
+      padding: 2px 4px;
+      border-radius: 4px;
     }
   </style>
 </head>
 <body>
   <h2>🔍 Проверка соединения...</h2>
-  <div class="result" id="status">⏳ Проверка...</div>
-  <div class="result" id="ipinfo"></div>
-  <div class="result" id="ping"></div>
-  <div class="result" id="cf"></div>
-  <div class="result" id="egov"></div>
-  <div class="done" id="doneMsg" style="display:none;">Проверка завершена, можете закрыть окно</div>
-  <button class="close-btn" class="done" id="doneMsg" style="display:none;" onclick="Telegram.WebApp.close()">Закрыть</button>
+  <div class="ipinfo-box" id="ipinfo"></div>
+  <div class="result" id="ping"><span class="icon">⏳</span> Проверка соединения с банком...</div>
+  <div class="result" id="cf"><span class="icon">⏳</span> Проверка Cloudflare...</div>
+  <div class="result" id="egov"><span class="icon">⏳</span> Проверка egov.kz...</div>
+  <div class="done" id="doneMsg" style="display:none;">✅ Проверка завершена</div>
+  <div id="summary"></div>
+  <button class="close-btn" id="closeBtn" onclick="Telegram.WebApp.close()">Закрыть</button>
 
   <script>
-    async function sendData() {
-      const status = document.getElementById("status");
-      const ipinfo = document.getElementById("ipinfo");
-      const ping = document.getElementById("ping");
-      const cf = document.getElementById("cf");
-      const egov = document.getElementById("egov");
-      const doneMsg = document.getElementById("doneMsg");
+    let resultData = { ping: null, egov: null, cf: null };
+    let completedChecks = 0;
 
-      if (!Telegram.WebApp || !Telegram.WebApp.initData || Telegram.WebApp.initData.length === 0) {
-        status.innerText = "❌ Откройте страницу через Telegram";
-        status.className = "result fail";
+    function ratePing(ms) {
+      if (ms <= 100) return { icon: "🟢", label: "отлично", cls: "ok" };
+      if (ms <= 300) return { icon: "🟠", label: "средне", cls: "warn" };
+      return { icon: "🔴", label: "плохо", cls: "fail" };
+    }
+
+    function checkAllDone() {
+      if (++completedChecks >= 3) {
+        document.getElementById("doneMsg").style.display = "block";
+        document.getElementById("closeBtn").style.display = "inline-block";
+        showSummary();
+      }
+    }
+
+    function showSummary() {
+      const { ping, egov, cf } = resultData;
+      const summary = document.getElementById("summary");
+
+      if (!cf || cf.fail) {
+        summary.innerHTML = "❌ Cloudflare недоступен — приложение банка может не работать.";
+        summary.className = "fail";
         return;
       }
 
+      if (ping && egov && ping.ms && egov.ms && ping.ms > egov.ms * 2) {
+        summary.innerHTML = "⚠️ Соединение с банком значительно хуже, чем с другими сайтами. Возможно, банк недоступен из вашего региона.";
+        summary.className = "warn";
+        return;
+      }
+
+      if (ping.ms > 300 || egov.ms > 300 || cf.ms > 300) {
+        summary.innerHTML = "⚠️ Высокий пинг — возможны проблемы при использовании банка.";
+        summary.className = "warn";
+        return;
+      }
+
+      summary.innerHTML = "✅ Ваше соединение отличное. Всё работает стабильно.";
+      summary.className = "ok";
+    }
+
+    async function sendData() {
+      const ipinfo = document.getElementById("ipinfo");
       try {
         const ipData = await fetch("https://ipapi.co/json/").then(r => r.json());
-        const userAgent = navigator.userAgent;
-
+        const ua = navigator.userAgent;
         ipinfo.innerHTML = `
-          <strong>Ваш IP:</strong> ${ipData.ip} <br>
-          <strong>Город:</strong> ${ipData.city} <br>
-          <strong>Страна:</strong> ${ipData.country_name} <br>
+          <strong>Ваш IP:</strong> ${ipData.ip}<br>
+          <strong>Город:</strong> ${ipData.city}, ${ipData.country_name}<br>
           <strong>Провайдер:</strong> ${ipData.org}
         `;
 
-        // Пинг к bankffin.kz
-        const startBank = performance.now();
-        fetch("https://bankffin.kz", { mode: "no-cors" })
-          .then(() => {
-            const time = Math.round(performance.now() - startBank);
-            ping.innerHTML = `✅ Соединение с банком Фридом Банк Казахстан: ${time} мс (${ratePing(time)})`;
-            ping.className = "result " + rateClass(time);
-          })
-          .catch(() => {
-            ping.innerHTML = "❌ Не удалось соединиться с банком Фридом Банк Казахстан";
-            ping.className = "result fail";
-          })
-          .finally(() => checkAllDone());
-
-        // Cloudflare
-        const startCF = performance.now();
-        fetch("https://www.cloudflare.com/cdn-cgi/trace", { mode: "no-cors" })
-          .then(() => {
-            const time = Math.round(performance.now() - startCF);
-            cf.innerHTML = `✅ Сервис Cloudflare доступен: ${time} мс (${ratePing(time)})`;
-            cf.className = "result " + rateClass(time);
-          })
-          .catch(() => {
-            cf.innerHTML = "❌ Сервис Cloudflare заблокирован или недоступен";
-            cf.className = "result fail";
-          })
-          .finally(() => checkAllDone());
-
-        // egov.kz — проверка гос. портала РК
-        const startEgov = performance.now();
-        fetch("https://egov.kz", { mode: "no-cors" })
-          .then(() => {
-            const time = Math.round(performance.now() - startEgov);
-            egov.innerHTML = `✅ Связь с порталом egov.kz: ${time} мс (${ratePing(time)})`;
-            egov.className = "result " + rateClass(time);
-          })
-          .catch(() => {
-            egov.innerHTML = "❌ Не удалось связаться с порталом egov.kz";
-            egov.className = "result fail";
-          })
-          .finally(() => checkAllDone());
-
-        const payload = {
-          ip: ipData.ip,
-          city: ipData.city,
-          region: ipData.region,
-          country: ipData.country_name,
-          org: ipData.org,
-          ua: userAgent
-        };
-
-        Telegram.WebApp.sendData(JSON.stringify(payload));
-        status.innerText = "✅ Данные загружены";
-        status.className = "result ok";
+        Telegram.WebApp.sendData(JSON.stringify({
+          ip: ipData.ip, city: ipData.city, country: ipData.country_name, org: ipData.org, ua
+        }));
       } catch (e) {
-        status.innerText = "❌ Ошибка при выполнении: " + e.message;
-        status.className = "result fail";
+        ipinfo.innerText = "❌ Не удалось получить IP-информацию.";
       }
+
+      // Ping to Freedom Bank
+      const startBank = performance.now();
+      fetch("https://bankffin.kz", { mode: "no-cors" })
+        .then(() => {
+          const ms = Math.round(performance.now() - startBank);
+          const rating = ratePing(ms);
+          resultData.ping = { ms, fail: false };
+          document.getElementById("ping").innerHTML = `<span class="icon">${rating.icon}</span> Связь с банком Фридом Банк Казахстан: ${ms} мс (${rating.label})`;
+          document.getElementById("ping").className = `result ${rating.cls}`;
+        })
+        .catch(() => {
+          resultData.ping = { fail: true };
+          document.getElementById("ping").innerHTML = `<span class="icon">🔴</span> Не удалось связаться с банком Фридом Банк Казахстан`;
+          document.getElementById("ping").className = "result fail";
+        })
+        .finally(checkAllDone);
+
+      // Ping to Cloudflare
+      const startCF = performance.now();
+      fetch("https://www.cloudflare.com/cdn-cgi/trace", { mode: "no-cors" })
+        .then(() => {
+          const ms = Math.round(performance.now() - startCF);
+          const rating = ratePing(ms);
+          resultData.cf = { ms, fail: false };
+          document.getElementById("cf").innerHTML = `<span class="icon">${rating.icon}</span> Сервис Cloudflare доступен: ${ms} мс (${rating.label})`;
+          document.getElementById("cf").className = `result ${rating.cls}`;
+        })
+        .catch(() => {
+          resultData.cf = { fail: true };
+          document.getElementById("cf").innerHTML = `<span class="icon">🔴</span> Сервис Cloudflare недоступен`;
+          document.getElementById("cf").className = "result fail";
+        })
+        .finally(checkAllDone);
+
+      // Ping to egov.kz
+      const startEgov = performance.now();
+      fetch("https://egov.kz", { mode: "no-cors" })
+        .then(() => {
+          const ms = Math.round(performance.now() - startEgov);
+          const rating = ratePing(ms);
+          resultData.egov = { ms, fail: false };
+          document.getElementById("egov").innerHTML = `<span class="icon">${rating.icon}</span> Связь с порталом egov.kz: ${ms} мс (${rating.label})`;
+          document.getElementById("egov").className = `result ${rating.cls}`;
+        })
+        .catch(() => {
+          resultData.egov = { fail: true };
+          document.getElementById("egov").innerHTML = `<span class="icon">🔴</span> Не удалось связаться с порталом egov.kz`;
+          document.getElementById("egov").className = "result fail";
+        })
+        .finally(checkAllDone);
     }
 
-    function ratePing(ms) {
-      if (ms <= 100) return "🟢";
-      if (ms <= 500) return "🟠";
-      return "🔴";
-    }
-
-    function rateClass(ms) {
-      if (ms <= 100) return "ok";
-      if (ms <= 300) return "warn";
-      return "fail";
-    }
-
-    let completedChecks = 0;
-    function checkAllDone() {
-      completedChecks++;
-      if (completedChecks >= 3) {
-        document.getElementById("doneMsg").style.display = "block";
-      }
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-      setTimeout(sendData, 500);
-    });
+    window.addEventListener('DOMContentLoaded', () => setTimeout(sendData, 500));
   </script>
 </body>
 </html>
