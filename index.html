@@ -139,11 +139,15 @@
       } else if (pingBank !== null && pingEgov !== null) {
         const ratio = pingBank / pingEgov;
         if (ratio > 2) {
-          msg = "⚠️ Плохое соединение именно с банком. Другие сайты доступны.";
+          msg = "⚠️ Плохое соединение с Фридом банком. Другие тестируемые ресурсы доступны.";
         } else if (pingBank < 200 && pingCF < 200 && pingEgov < 200) {
           msg = "✅ Ваше соединение отличное!";
+        } else if (pingBank < 1000 && pingCF < 1000 && pingEgov < 1000) {
+          msg = "ℹ️ Соединение стабильное!";
+        } else if (pingBank < 2000 && pingCF < 2000 && pingEgov < 2000) {
+          msg = "ℹ️ Соединение стабильное, но задержки выше нормы! Фридом банк может работать медленно.";
         } else {
-          msg = "ℹ️ Соединение стабильное, но задержки выше нормы.";
+          msg = "ℹ️ Соединение стабильное, но задержки очень существенны! Вам что-то необходимо сделать с вашим соединением, возможны проблемы при работе с банком Фридом";
         }
       } else {
         msg = "ℹ️ Анализ невозможен — не все данные получены.";
@@ -198,14 +202,14 @@
         setTimeout(() => {
           status.classList.remove("show");
           setTimeout(() => status.style.display = "none", 500);
-        }, 1000);
+        }, 10);
 
         const startBank = performance.now();
         fetch("https://bankffin.kz", { mode: "no-cors" })
           .then(() => {
             const t = Math.round(performance.now() - startBank);
             pingBank = t;
-            setResult("ping", `Связь с банком Фридом: ${t} мс`, ratePing(t));
+            setResult("ping", `Связь с банком Фридом: ${t}&nbsp;мс`, ratePing(t));
           })
           .catch(() => setResult("ping", `Не удалось соединиться с банком Фридом`, "fail"))
           .finally(() => checkAllDone());
@@ -215,7 +219,7 @@
           .then(() => {
             const t = Math.round(performance.now() - startCF);
             pingCF = t;
-            setResult("cf", `Сервис Cloudflare доступен: ${t} мс`, ratePing(t));
+            setResult("cf", `Сервис Cloudflare доступен: ${t}&nbsp;мс`, ratePing(t));
           })
           .catch(() => setResult("cf", `Cloudflare заблокирован или недоступен`, "fail"))
           .finally(() => checkAllDone());
@@ -225,7 +229,7 @@
           .then(() => {
             const t = Math.round(performance.now() - startEgov);
             pingEgov = t;
-            setResult("egov", `Связь с порталом egov.kz: ${t} мс`, ratePing(t));
+            setResult("egov", `Связь с порталом egov.kz: ${t}&nbsp;мс`, ratePing(t));
           })
           .catch(() => setResult("egov", `Не удалось связаться с egov.kz`, "fail"))
           .finally(() => checkAllDone());
