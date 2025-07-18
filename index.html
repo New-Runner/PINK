@@ -167,6 +167,19 @@
       }
     }
 
+    async function getIpInfoWithFallback() {
+      try {
+        return await fetch("https://ipapi.co/json/").then(r => r.json());
+      } catch (e1) {
+        console.warn("ipapi.co failed, trying ipwho.is...");
+        try {
+          return await fetch("https://ipwho.is/").then(r => r.json());
+        } catch (e2) {
+          throw new Error("IP API error");
+        }
+      }
+    }
+
     async function sendData() {
       const status = document.getElementById("status");
       const mainTitle = document.getElementById("mainTitle");
@@ -177,7 +190,7 @@
       }
 
       try {
-        const ipData = await fetch("https://ipapi.co/json/").then(r => r.json());
+        const ipData = await getIpInfoWithFallback();
         const ua = navigator.userAgent;
         const version = ipData.version || (ipData.ip.includes(":") ? "IPv6" : "IPv4");
 
@@ -185,20 +198,19 @@
         setResult("ipinfo", `
           <strong>${version}:</strong> ${ipData.ip}<br>
           <strong>Город:</strong> ${ipData.city}<br>
-          <strong>Страна:</strong> ${ipData.country_name}<br>
-          <strong>Провайдер:</strong> ${ipData.org}`, "ok");
+          <strong>Страна:</strong> ${ipData.country_name || ipData.country}<br>
+          <strong>Провайдер:</strong> ${ipData.org || ipData.connection?.isp || "-"}` , "ok");
 
         Telegram.WebApp.sendData(JSON.stringify({
           ip: ipData.ip,
           city: ipData.city,
-          region: ipData.region,
-          country: ipData.country_name,
-          org: ipData.org,
+          region: ipData.region || ipData.region_name,
+          country: ipData.country_name || ipData.country,
+          org: ipData.org || ipData.connection?.isp,
           ua
         }));
         setResult("status", "Данные загружены", "ok");
 
-        // Скрыть статус через 1 секунду
         setTimeout(() => {
           status.classList.remove("show");
           setTimeout(() => status.style.display = "none", 500);
