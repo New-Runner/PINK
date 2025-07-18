@@ -95,7 +95,6 @@
 </head>
 <body>
   <h2 id="mainTitle">⏳ Определение...</h2>
-<!--   <div class="result fade" id="status">⏳ Проверка...</div> -->
   <div class="result fade" id="ipinfo"></div>
   <div class="result fade" id="ping"></div>
   <div class="result fade" id="cf"></div>
@@ -103,11 +102,12 @@
   <div class="analysis" id="analysis"></div>
   <div class="done" id="doneMsg">✅ Проверка завершена</div>
   <button class="close-btn" id="closeBtn" onclick="Telegram.WebApp.close()">Закрыть</button>
+  <div class="result fade" id="status">⏳ Проверка...</div>
 
   <script>
     let pingBank = null, pingCF = null, pingEgov = null;
 
-    function setResult(id, msg, status) {
+    function setResult(id, msg, ) {
       const el = document.getElementById(id);
       el.innerHTML = `<span class="status-icon">${getIcon(status)}</span> ${msg}`;
       el.className = `result fade ${status}`;
